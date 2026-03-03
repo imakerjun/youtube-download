@@ -1,4 +1,6 @@
 import asyncio
+import platform
+import subprocess
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
@@ -64,6 +66,20 @@ async def cancel_download(download_id: int):
         raise HTTPException(404, "Download not found")
     await db.update_download(download_id, status="cancelled")
     return {"status": "cancelled"}
+
+@router.post("/downloads/open-folder")
+async def open_download_folder():
+    from app.core.config import settings
+    folder = settings.download_dir
+    folder.mkdir(parents=True, exist_ok=True)
+    system = platform.system()
+    if system == "Darwin":
+        subprocess.Popen(["open", str(folder)])
+    elif system == "Linux":
+        subprocess.Popen(["xdg-open", str(folder)])
+    elif system == "Windows":
+        subprocess.Popen(["explorer", str(folder)])
+    return {"path": str(folder.resolve())}
 
 async def run_download(download_id: int, url: str, format_id: str):
     from app.ws.progress import broadcast_progress

@@ -33,4 +33,7 @@ export const api = {
 
   cancelDownload: (id: number) =>
     fetchJSON<{ status: string }>(`/downloads/${id}`, { method: "DELETE" }),
+
+  openFolder: () =>
+    fetchJSON<{ path: string }>("/downloads/open-folder", { method: "POST" }),
 };
