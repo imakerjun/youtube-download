@@ -3,12 +3,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import Database
+from app.api.routes import router
+import app.api.routes as routes_module
 
 db = Database(settings.db_path)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.init()
+    routes_module.db = db
     yield
     await db.close()
 
@@ -20,6 +23,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(router)
 
 @app.get("/api/health")
 async def health():
