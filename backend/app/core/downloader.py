@@ -6,7 +6,7 @@ from app.core.config import settings
 
 class VideoExtractor:
     async def extract(self, url: str) -> dict[str, Any]:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._extract_sync, url)
 
     def _extract_sync(self, url: str) -> dict[str, Any]:
@@ -64,7 +64,7 @@ class DownloadManager:
         format_id: str = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         progress_callback: Callable[[float, str], None] | None = None,
     ) -> dict[str, Any]:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None, self._download_sync, url, format_id, progress_callback
         )

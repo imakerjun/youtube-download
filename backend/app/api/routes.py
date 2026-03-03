@@ -70,9 +70,11 @@ async def run_download(download_id: int, url: str, format_id: str):
 
     await db.update_download(download_id, status="downloading")
 
+    loop = asyncio.get_running_loop()
+
     def on_progress(pct: float, msg: str):
-        asyncio.get_event_loop().call_soon_threadsafe(
-            asyncio.create_task,
+        loop.call_soon_threadsafe(
+            asyncio.ensure_future,
             _update_progress(download_id, pct)
         )
 
