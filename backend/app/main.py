@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import Database
@@ -29,3 +29,14 @@ app.include_router(router)
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+@app.websocket("/ws/progress")
+async def websocket_progress(ws: WebSocket):
+    from app.ws.progress import connections
+    await ws.accept()
+    connections.add(ws)
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        connections.discard(ws)
