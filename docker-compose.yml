@@ -1,0 +1,19 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./downloads:/app/downloads
+      - ./data:/app/data
+    environment:
+      - YTD_DOWNLOAD_DIR=/app/downloads
+      - YTD_DATA_DIR=/app/data
+      - YTD_DB_PATH=/app/data/youtube_dl.db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
