@@ -1,7 +1,18 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.config import settings
+from app.core.database import Database
 
-app = FastAPI(title="YouTube Downloader")
+db = Database(settings.db_path)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await db.init()
+    yield
+    await db.close()
+
+app = FastAPI(title="YouTube Downloader", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
