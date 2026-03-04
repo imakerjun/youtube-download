@@ -45,6 +45,8 @@ export interface Download {
   file_size: number | null;
   status: "pending" | "downloading" | "completed" | "failed" | "cancelled";
   progress: number;
+  speed: number;
+  eta: number;
   error_message: string | null;
   created_at: string;
   completed_at: string | null;
@@ -54,4 +56,6 @@ export interface ProgressMessage {
   download_id: number;
   progress: number;
   status: string;
+  speed: number;
+  eta: number;
 }

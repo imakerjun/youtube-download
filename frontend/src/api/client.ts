@@ -36,4 +36,13 @@ export const api = {
 
   openFolder: () =>
     fetchJSON<{ path: string }>("/downloads/open-folder", { method: "POST" }),
+
+  deleteDownload: (id: number) =>
+    fetchJSON<{ status: string }>(`/downloads/${id}/delete`, { method: "DELETE" }),
+
+  retryDownload: (id: number) =>
+    fetchJSON<Download>(`/downloads/${id}/retry`, { method: "POST" }),
+
+  clearCompleted: () =>
+    fetchJSON<{ deleted: number }>("/downloads/completed", { method: "DELETE" }),
 };
