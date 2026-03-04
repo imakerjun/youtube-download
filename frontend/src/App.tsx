@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { api } from "./api/client";
-import type { Download, VideoInfo } from "./api/types";
+import type { Download, VideoInfo, PlaylistInfo, PlaylistEntry } from "./api/types";
 import { useProgressWebSocket } from "./hooks/useWebSocket";
 import { UrlInput } from "./components/UrlInput";
 import { FormatSelector } from "./components/FormatSelector";
@@ -8,6 +8,7 @@ import { DownloadList } from "./components/DownloadList";
 import { VideoSkeleton } from "./components/Skeleton";
 import { ToastContainer, toast } from "./components/Toast";
 import { friendlyError } from "./utils/errorMessages";
+import { PlaylistSelector } from "./components/PlaylistSelector";
 
 function App() {
   const [downloads, setDownloads] = useState<Download[]>([]);
@@ -15,6 +16,7 @@ function App() {
   const [currentUrl, setCurrentUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [playlistInfo, setPlaylistInfo] = useState<PlaylistInfo | null>(null);
 
   const loadDownloads = useCallback(async () => {
     const list = await api.listDownloads();
@@ -56,7 +58,7 @@ function App() {
       try {
         const info = await api.extract(urls[0]);
         if (info.is_playlist) {
-          setError("재생목록 지원은 추후 추가 예정입니다.");
+          setPlaylistInfo(info as PlaylistInfo);
         } else {
           setVideoInfo(info as VideoInfo);
           setCurrentUrl(urls[0]);
@@ -79,6 +81,20 @@ function App() {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  const handlePlaylistDownload = async (entries: PlaylistEntry[], formatId: string) => {
+    try {
+      const urls = entries.map(
+        (e) => `https://www.youtube.com/watch?v=${e.video_id}`
+      );
+      await api.batchDownload(urls, formatId);
+      setPlaylistInfo(null);
+      toast(`${entries.length}개 다운로드가 시작되었습니다`, "info");
+      await loadDownloads();
+    } catch (e: any) {
+      setError(friendlyError(e.message));
     }
   };
 
@@ -116,6 +132,14 @@ function App() {
             info={videoInfo}
             onSelect={handleFormatSelect}
             onCancel={() => setVideoInfo(null)}
+          />
+        )}
+
+        {playlistInfo && (
+          <PlaylistSelector
+            info={playlistInfo}
+            onDownload={handlePlaylistDownload}
+            onCancel={() => setPlaylistInfo(null)}
           />
         )}
 
