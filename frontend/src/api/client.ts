@@ -45,4 +45,10 @@ export const api = {
 
   clearCompleted: () =>
     fetchJSON<{ deleted: number }>("/downloads/completed", { method: "DELETE" }),
+
+  batchDownload: (urls: string[], format_id: string) =>
+    fetchJSON<Download[]>("/downloads/batch", {
+      method: "POST",
+      body: JSON.stringify({ urls, format_id }),
+    }),
 };
