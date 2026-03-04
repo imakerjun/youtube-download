@@ -125,3 +125,57 @@ async def test_clear_completed(client, test_db):
     remaining = await test_db.list_downloads()
     assert len(remaining) == 1
     assert remaining[0]["status"] != "completed"
+
+
+@pytest.mark.anyio
+async def test_batch_download(client, test_db):
+    mock_infos = [
+        {
+            "is_playlist": False,
+            "video_id": f"batch{i}",
+            "title": f"Batch Video {i}",
+            "channel": "Test Ch",
+            "duration": 60,
+            "thumbnail_url": "",
+            "formats": [],
+        }
+        for i in range(3)
+    ]
+
+    with patch("app.api.routes.extractor") as mock_ext:
+        mock_ext.extract = AsyncMock(side_effect=mock_infos)
+        resp = await client.post("/api/downloads/batch", json={
+            "urls": [
+                "https://youtube.com/watch?v=batch0",
+                "https://youtube.com/watch?v=batch1",
+                "https://youtube.com/watch?v=batch2",
+            ],
+            "format_id": "22",
+        })
+
+    assert resp.status_code == 201
+    data = resp.json()
+    assert len(data) == 3
+    assert all(d["status"] == "pending" for d in data)
+
+
+@pytest.mark.anyio
+async def test_extract_playlist(client):
+    mock_playlist = {
+        "is_playlist": True,
+        "playlist_id": "PLabc",
+        "title": "Test Playlist",
+        "entries": [
+            {"video_id": "v1", "title": "Vid 1", "channel": "Ch", "duration": 60, "thumbnail_url": ""},
+            {"video_id": "v2", "title": "Vid 2", "channel": "Ch", "duration": 120, "thumbnail_url": ""},
+        ],
+    }
+
+    with patch("app.api.routes.extractor") as mock_ext:
+        mock_ext.extract = AsyncMock(return_value=mock_playlist)
+        resp = await client.post("/api/extract", json={"url": "https://youtube.com/playlist?list=PLabc"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["is_playlist"] is True
+    assert len(data["entries"]) == 2

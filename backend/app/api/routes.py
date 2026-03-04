@@ -21,6 +21,10 @@ class DownloadRequest(BaseModel):
     url: str
     format_id: str = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 
+class BatchDownloadRequest(BaseModel):
+    urls: list[str]
+    format_id: str = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+
 @router.post("/extract")
 async def extract_info(req: ExtractRequest):
     info = await extractor.extract(req.url)
@@ -29,9 +33,6 @@ async def extract_info(req: ExtractRequest):
 @router.post("/downloads", status_code=201)
 async def create_download(req: DownloadRequest, background_tasks: BackgroundTasks):
     info = await extractor.extract(req.url)
-
-    if info.get("is_playlist"):
-        raise HTTPException(400, "Use /api/extract first for playlists")
 
     download_id = await db.create_download(
         url=req.url,
@@ -47,6 +48,27 @@ async def create_download(req: DownloadRequest, background_tasks: BackgroundTask
 
     download = await db.get_download(download_id)
     return download
+
+@router.post("/downloads/batch", status_code=201)
+async def batch_download(req: BatchDownloadRequest, background_tasks: BackgroundTasks):
+    downloads = []
+    for url in req.urls:
+        info = await extractor.extract(url)
+        if info.get("is_playlist"):
+            continue  # 개별 영상 URL만 처리
+        download_id = await db.create_download(
+            url=url,
+            video_id=info["video_id"],
+            title=info["title"],
+            channel=info["channel"],
+            duration=info["duration"],
+            thumbnail_url=info["thumbnail_url"],
+            format_id=req.format_id,
+        )
+        background_tasks.add_task(run_download, download_id, url, req.format_id)
+        download = await db.get_download(download_id)
+        downloads.append(download)
+    return downloads
 
 @router.get("/downloads")
 async def list_downloads(limit: int = 50, offset: int = 0):
