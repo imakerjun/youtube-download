@@ -62,7 +62,7 @@ class DownloadManager:
         self,
         url: str,
         format_id: str = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-        progress_callback: Callable[[float, str], None] | None = None,
+        progress_callback: Callable[[float, float, int], None] | None = None,
     ) -> dict[str, Any]:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
@@ -71,7 +71,7 @@ class DownloadManager:
 
     def _download_sync(
         self, url: str, format_id: str,
-        progress_callback: Callable[[float, str], None] | None,
+        progress_callback: Callable[[float, float, int], None] | None,
     ) -> dict[str, Any]:
         self.download_dir.mkdir(parents=True, exist_ok=True)
         result = {}
@@ -81,7 +81,9 @@ class DownloadManager:
                 total = d.get("total_bytes") or d.get("total_bytes_estimate") or 0
                 downloaded = d.get("downloaded_bytes", 0)
                 pct = (downloaded / total * 100) if total else 0
-                progress_callback(pct, d.get("_default_template", ""))
+                speed = d.get("speed") or 0  # bytes/sec
+                eta = d.get("eta") or 0  # seconds
+                progress_callback(pct, speed, eta)
             elif d["status"] == "finished":
                 result["file_path"] = d.get("filename", "")
                 result["file_size"] = d.get("total_bytes", 0)

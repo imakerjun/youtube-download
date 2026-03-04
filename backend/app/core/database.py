@@ -73,3 +73,17 @@ class Database:
         )
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
+
+    async def delete_download(self, download_id: int) -> bool:
+        cursor = await self.db.execute(
+            "DELETE FROM downloads WHERE id = ?", (download_id,)
+        )
+        await self.db.commit()
+        return cursor.rowcount > 0
+
+    async def clear_completed(self) -> int:
+        cursor = await self.db.execute(
+            "DELETE FROM downloads WHERE status = 'completed'"
+        )
+        await self.db.commit()
+        return cursor.rowcount

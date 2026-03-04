@@ -52,6 +52,11 @@ async def create_download(req: DownloadRequest, background_tasks: BackgroundTask
 async def list_downloads(limit: int = 50, offset: int = 0):
     return await db.list_downloads(limit=limit, offset=offset)
 
+@router.delete("/downloads/completed")
+async def clear_completed_downloads():
+    count = await db.clear_completed()
+    return {"deleted": count}
+
 @router.get("/downloads/{download_id}")
 async def get_download(download_id: int):
     download = await db.get_download(download_id)
@@ -66,6 +71,26 @@ async def cancel_download(download_id: int):
         raise HTTPException(404, "Download not found")
     await db.update_download(download_id, status="cancelled")
     return {"status": "cancelled"}
+
+@router.delete("/downloads/{download_id}/delete")
+async def delete_download(download_id: int):
+    download = await db.get_download(download_id)
+    if not download:
+        raise HTTPException(404, "Download not found")
+    await db.delete_download(download_id)
+    return {"status": "deleted"}
+
+@router.post("/downloads/{download_id}/retry")
+async def retry_download(download_id: int, background_tasks: BackgroundTasks):
+    download = await db.get_download(download_id)
+    if not download:
+        raise HTTPException(404, "Download not found")
+    if download["status"] not in ("failed", "cancelled"):
+        raise HTTPException(400, "Can only retry failed or cancelled downloads")
+    await db.update_download(download_id, status="pending", progress=0, error_message=None)
+    background_tasks.add_task(run_download, download_id, download["url"], download["format_id"])
+    updated = await db.get_download(download_id)
+    return updated
 
 @router.post("/downloads/open-folder")
 async def open_download_folder():
@@ -88,10 +113,10 @@ async def run_download(download_id: int, url: str, format_id: str):
 
     loop = asyncio.get_running_loop()
 
-    def on_progress(pct: float, msg: str):
+    def on_progress(pct: float, speed: float, eta: int):
         loop.call_soon_threadsafe(
             asyncio.ensure_future,
-            _update_progress(download_id, pct)
+            _update_progress(download_id, pct, speed, eta)
         )
 
     try:
@@ -113,7 +138,7 @@ async def run_download(download_id: int, url: str, format_id: str):
         )
         await broadcast_progress(download_id, 0, "failed")
 
-async def _update_progress(download_id: int, pct: float):
+async def _update_progress(download_id: int, pct: float, speed: float = 0, eta: int = 0):
     from app.ws.progress import broadcast_progress
     await db.update_download(download_id, progress=pct)
-    await broadcast_progress(download_id, pct, "downloading")
+    await broadcast_progress(download_id, pct, "downloading", speed, eta)
