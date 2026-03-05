@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface ToastItem {
   id: number;
@@ -6,6 +6,7 @@ interface ToastItem {
   type: "success" | "error" | "info";
 }
 
+let nextId = 0;
 let addToastFn: ((message: string, type: ToastItem["type"]) => void) | null = null;
 
 export function toast(message: string, type: ToastItem["type"] = "info") {
@@ -14,19 +15,22 @@ export function toast(message: string, type: ToastItem["type"] = "info") {
 
 export function ToastContainer() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const addToastRef = useRef<(message: string, type: ToastItem["type"]) => void>();
 
   const addToast = useCallback((message: string, type: ToastItem["type"]) => {
-    const id = Date.now();
+    const id = ++nextId;
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3000);
   }, []);
 
+  addToastRef.current = addToast;
+
   useEffect(() => {
-    addToastFn = addToast;
+    addToastFn = (msg, type) => addToastRef.current?.(msg, type);
     return () => { addToastFn = null; };
-  }, [addToast]);
+  }, []);
 
   if (toasts.length === 0) return null;
 
