@@ -1,6 +1,10 @@
+import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pathlib import Path
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.core.database import Database
 from app.api.routes import router
@@ -40,3 +44,15 @@ async def websocket_progress(ws: WebSocket):
             await ws.receive_text()
     except WebSocketDisconnect:
         connections.discard(ws)
+
+# ── Static file serving (Electron production mode) ──────
+static_dir = os.environ.get("YTD_STATIC_DIR")
+if static_dir and Path(static_dir).is_dir():
+    app.mount("/assets", StaticFiles(directory=Path(static_dir) / "assets"), name="assets")
+
+    @app.get("/{path:path}")
+    async def spa_fallback(request: Request, path: str):
+        file_path = Path(static_dir) / path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(Path(static_dir) / "index.html")

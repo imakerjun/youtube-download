@@ -1,0 +1,2 @@
+[      63ms] [WARNING] WebSocket connection to 'ws://localhost:5173/ws/progress' failed: WebSocket is closed before the connection is established. @ http://localhost:5173/src/hooks/useWebSocket.ts:18
+[   59402ms] [ERROR] Cannot update a component (`%s`) while rendering a different component (`%s`). To locate the bad setState() call inside `%s`, follow the stack trace as described in https://react.dev/link/setstate-in-render ToastContainer App App @ http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=29037919:11683
